@@ -1,0 +1,5 @@
+*.pdf
+*.nii.gz
+*.py
+examples
+__pycache__
