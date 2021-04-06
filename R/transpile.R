@@ -1,6 +1,6 @@
 # devtools::install.packages('Rdpack')
 
-transpile <- function(packageName, RdFiles) {
+transpile <- function(packageName, RdFiles, description = NA) {
     # reticulate::use_python("/usr/bin/python3", required = TRUE)
     # ast <- reticulate::import('ast')
     special_defaults <- function(value) {
@@ -68,13 +68,20 @@ transpile <- function(packageName, RdFiles) {
                 "\ndef ", gsub("\\.", '_', name), '(', paste0(args_w_defaults, collapse = ', '), '):\n'
             , sep = '')
             all_assignments = paste0(paste0("\t", assignments, "\n"), collapse = '', sep = '')
-            ret = paste0(paste0("\treturn r('", name, '(', ifelse(length(args) > 0, paste0(paste0(args, '=', args), collapse = ', '), ''), ")')\n"
+            ret = paste0(paste0("\treturn r('", name, ifelse(length(args) > 0, paste0('(', paste0(paste0(args, '=', args), collapse = ', '), ')'), ''), "')\n"
             , sep = ''))
             # need to take out withs, replace None with r(NULL)
             # with_converter = paste0("\twith conversion.localconverter(default_converter + none_converter):\n\t\tnumpy2ri.activate()\n\t\tpandas2ri.activate()\n")
             methods[[i]] = ifelse(length(args) > 0, paste0(function_signature, all_assignments, validations, ret), paste0(function_signature, ret))
             i = i + 1
         }
+    }
+
+    imports = ""
+    if (!is.na(description)) {
+        deps = desc::description$new(description)$get_deps()
+        packages = deps[deps$type == "Imports",]$package
+        imports = paste0("importr('", paste0( packages, collapse = "')\nimportr('"), "')")
     }
 
     paste("import os",
@@ -84,6 +91,7 @@ transpile <- function(packageName, RdFiles) {
     "numpy2ri.activate()",
     "pandas2ri.activate()",
     paste0("importr('", packageName, "')"),
+    imports,
     "neurobase = importr('neurobase')\n",
     # "def _none2null(none_obj):",
     # "\treturn r('NULL')",
