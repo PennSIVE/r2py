@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ "$#" -ne 1 ]; then
+if [ "$#" -ne 4 ]; then
     echo "Usage: ./run.sh github_username repo_name gh_email gh_password"
     exit 1
 fi
