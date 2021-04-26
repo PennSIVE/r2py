@@ -1,5 +1,9 @@
 *.pdf
 *.nii.gz
 *.py
+*.js
 examples
 __pycache__
+.env
+.DS_Store
+
