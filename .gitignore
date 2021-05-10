@@ -1,6 +1,5 @@
 *.pdf
 *.nii.gz
-*.py
 *.js
 examples
 __pycache__
