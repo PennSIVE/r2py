@@ -8,10 +8,20 @@ if [ "$#" -ne 4 ]; then
 fi
 
 if [ ! -e $GITHUB_WORKSPACE ]; then
-    if [ ! -e /data ]; then
-        echo "Must clone R package to /data"
-    fi
     export GITHUB_WORKSPACE=/data
+    if [ ! -e $GITHUB_WORKSPACE ]; then
+        echo "Must clone R package to /data"
+        exit 1
+    fi
+fi
+
+r2py_root=/opt/r2py
+if [ ! -e $r2py_root ]; then
+    r2py_root=$GITHUB_WORKSPACE/r2py
+    if [ ! -e $r2py_root ]; then
+        echo "Must clone R package to /opt/r2py"
+        exit 1
+    fi
 fi
 
 repo_user=$1
@@ -27,11 +37,11 @@ git config --global user.email $gh_email
 git config --global user.name $repo_user
 git config --global init.defaultBranch main
 git init
-cp -r /opt/r2py/boilerplate/* .
+cp -r ${r2py_root}/boilerplate/* .
 mv PackageName ${repo_name}
 sed -i "s/PackageName/${repo_name}/g" setup.cfg
 echo "Auto generated wrapper for ${repo_name}" > README.md
-Rscript -e "source('/opt/r2py/R/transpile.R'); cat(transpile('${repo_name}', list.files(file.path(Sys.getenv('GITHUB_WORKSPACE'), 'man'), full.names = TRUE), file.path(Sys.getenv('GITHUB_WORKSPACE'), 'DESCRIPTION')))" > ${repo_name}/__init__.py
+Rscript -e "source('${r2py_root}/R/transpile.R'); cat(transpile('${repo_name}', list.files(file.path(Sys.getenv('GITHUB_WORKSPACE'), 'man'), full.names = TRUE), file.path(Sys.getenv('GITHUB_WORKSPACE'), 'DESCRIPTION')))" > ${repo_name}/__init__.py
 git add .
 git commit -m "first commit"
 # git remote add origin git@github.com:${repo_user}/${gh_repo_name}.git
