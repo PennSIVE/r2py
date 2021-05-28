@@ -70,7 +70,7 @@ const convert = (packageName, RdFiles, description = null) => {
         const re = /\\usage\s*\{(.+?(?=\}))\}/gs;
         const usage = re.exec(contents)[1];
 
-        const arg_names = contents.match(/\\item\{.+?(?=\})/gs)?.map(x => x.replace("\\item{", ''));
+        const arg_names = contents.match(/\\item\{.+?(?=\})/gs).map(x => x.replace("\\item{", ''));
         const method_name = contents.match(/\\name\{.+?(?=\})/gs).map(x => x.replace("\\name{", ''))[0];
 
         const args = parse_args(usage, arg_names, method_name);
