@@ -22,7 +22,7 @@ async function main() {
                 'Authorization': `token ${pat}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name: repo })
+            body: JSON.stringify({ name: `${repo}.py` })
         });
         fs.mkdtemp(path.join(os.tmpdir(), 'r2py-'), (err, folder) => {
             if (err) throw err;
@@ -43,9 +43,9 @@ async function main() {
             fs.writeFileSync(`${repo}/__init__.py`, convert(repo, fs.readdirSync(man_files).map(x => `${man_files}/` + x)));
             execSync('git add .')
             execSync('git commit -m "first commit"')
-            execSync(`git remote add origin https://${username}:${password}@github.com/${username}/${repo}.git`)
+            execSync(`git remote add origin https://${username}:${password}@github.com/${username}/${repo}.py.git`)
             execSync('git branch -M main')
-            execSync(`git push https://${username}:${password}@github.com/${username}/${repo}.git`)
+            execSync(`git push https://${username}:${password}@github.com/${username}/${repo}.py.git`)
         });
     } catch (error) {
         core.setFailed(error.message);
