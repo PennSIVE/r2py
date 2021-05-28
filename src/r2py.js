@@ -70,7 +70,11 @@ const convert = (packageName, RdFiles, description = null) => {
         const re = /\\usage\s*\{(.+?(?=\}))\}/gs;
         const usage = re.exec(contents)[1];
 
-        const arg_names = contents.match(/\\item\{.+?(?=\})/gs).map(x => x.replace("\\item{", ''));
+        const tmp = contents.match(/\\item\{.+?(?=\})/gs);
+        let arg_names = undefined;
+        if (tmp) {
+            arg_names = tmp.map(x => x.replace("\\item{", ''));   
+        }
         const method_name = contents.match(/\\name\{.+?(?=\})/gs).map(x => x.replace("\\name{", ''))[0];
 
         const args = parse_args(usage, arg_names, method_name);
@@ -79,13 +83,13 @@ const convert = (packageName, RdFiles, description = null) => {
         for (const arg in args) {
             const def = args[arg];
             const complex_default = (def.constructor === Array);
-            buffer1.push(`${arg.replaceAll('.', '_')} = ${(complex_default) ? 'None' : def}`);
+            buffer1.push(`${arg.replace(/\./g, '_')} = ${(complex_default) ? 'None' : def}`);
             (!complex_default) ?
-                buffer2.push(`r.assign('${arg}', ${arg.replaceAll('.', '_')})`)
+                buffer2.push(`r.assign('${arg}', ${arg.replace(/\./g, '_')})`)
             :
-                buffer3.push(`if ${arg.replaceAll('.', '_')} is None:\n\t\t${arg.replaceAll('.', '_')} = r('${def[0]}')\n\tr.assign('${arg}', ${arg.replaceAll('.', '_')})`)
+                buffer3.push(`if ${arg.replace(/\./g, '_')} is None:\n\t\t${arg.replace(/\./g, '_')} = r('${def[0]}')\n\tr.assign('${arg}', ${arg.replace(/\./g, '_')})`)
         }
-        const signature = `def ${method_name.replaceAll('.', '_')}(${buffer1.join(', ')}):\n\t`
+        const signature = `def ${method_name.replace(/\./g, '_')}(${buffer1.join(', ')}):\n\t`
         const assignments = (buffer2.length > 0) ? buffer2.join("\n\t") : ''
         const validated_assignments = (buffer3.length > 0) ? "\n\t" + buffer3.join("\n\t") : ''
         const ret = (Object.keys(args).length === 0) ? `return r('${method_name}')\n` : `\n\treturn r('${method_name}(${Object.keys(args).map(x => x + '=' + x).join(', ')})')\n`;
