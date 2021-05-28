@@ -1,6 +1,7 @@
+node_modules
+R
 *.pdf
 *.nii.gz
-*.js
 examples
 __pycache__
 .env

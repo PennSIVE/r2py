@@ -1,0 +1,21 @@
+name: 'r2py'
+description: 'Convert R code to python with rpy2'
+inputs:
+  username:  # id of input
+    description: 'GitHub username'
+    required: true
+  repo:
+    description: 'Name of repo to convert'
+    required: true
+  email:
+    description: 'GitHub email'
+    required: true
+  password:
+    description: 'GitHub password'
+    required: true
+  pat:
+    description: 'GitHub personal access token'
+    required: true
+runs:
+  using: 'node12'
+  main: 'main.js'
