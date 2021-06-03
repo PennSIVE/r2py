@@ -10,9 +10,6 @@ inputs:
   email:
     description: 'GitHub email'
     required: true
-  password:
-    description: 'GitHub password'
-    required: true
   pat:
     description: 'GitHub personal access token'
     required: true

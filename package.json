@@ -1,12 +1,13 @@
 {
   "name": "r2py",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Wraps R code in python using rpy2.",
   "main": "main.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
+    "start": "node main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,7 +24,6 @@
     "@actions/core": "^1.2.7",
     "@actions/github": "^5.0.0",
     "fs-extra": "^10.0.0",
-    "node-fetch": "^2.6.1",
     "replace-in-file": "^6.2.0"
   }
 }
