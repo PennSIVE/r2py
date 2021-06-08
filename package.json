@@ -1,6 +1,6 @@
 {
   "name": "r2py",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Wraps R code in python using rpy2.",
   "main": "main.js",
   "directories": {
@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node main.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "ncc build main.js -o dist --source-map"
   },
   "repository": {
     "type": "git",
