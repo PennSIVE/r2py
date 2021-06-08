@@ -15127,7 +15127,7 @@ async function main() {
             execSync(`git config --global user.name ${username}`)
             execSync('git config --global init.defaultBranch main')
             execSync('git init')
-            fs.copySync(`${__dirname}/boilerplate/`, '.')
+            fs.copySync(`${__dirname}/../boilerplate/`, '.')
             fs.moveSync('PackageName', repo)
             replace.sync({
                 files: 'setup.cfg',
