@@ -1409,8 +1409,9 @@ function _objectWithoutProperties(source, excluded) {
   return target;
 }
 
-const VERSION = "3.4.0";
+const VERSION = "3.5.1";
 
+const _excluded = ["authStrategy"];
 class Octokit {
   constructor(options = {}) {
     const hook = new beforeAfterHook.Collection();
@@ -1472,7 +1473,7 @@ class Octokit {
       const {
         authStrategy
       } = options,
-            otherOptions = _objectWithoutProperties(options, ["authStrategy"]);
+            otherOptions = _objectWithoutProperties(options, _excluded);
 
       const auth = authStrategy(Object.assign({
         request: this.request,
@@ -1914,7 +1915,7 @@ function withDefaults(oldDefaults, newDefaults) {
   });
 }
 
-const VERSION = "6.0.11";
+const VERSION = "6.0.12";
 
 const userAgent = `octokit-endpoint.js/${VERSION} ${universalUserAgent.getUserAgent()}`; // DEFAULTS has all properties set that EndpointOptions has, except url.
 // So we use RequestParameters and add method as additional required property.
@@ -1951,7 +1952,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 var request = __nccwpck_require__(3986);
 var universalUserAgent = __nccwpck_require__(7081);
 
-const VERSION = "4.6.2";
+const VERSION = "4.6.4";
 
 class GraphqlError extends Error {
   constructor(request, response) {
@@ -2072,7 +2073,60 @@ exports.withCustomRequest = withCustomRequest;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-const VERSION = "2.13.3";
+const VERSION = "2.13.5";
+
+function ownKeys(object, enumerableOnly) {
+  var keys = Object.keys(object);
+
+  if (Object.getOwnPropertySymbols) {
+    var symbols = Object.getOwnPropertySymbols(object);
+
+    if (enumerableOnly) {
+      symbols = symbols.filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+      });
+    }
+
+    keys.push.apply(keys, symbols);
+  }
+
+  return keys;
+}
+
+function _objectSpread2(target) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i] != null ? arguments[i] : {};
+
+    if (i % 2) {
+      ownKeys(Object(source), true).forEach(function (key) {
+        _defineProperty(target, key, source[key]);
+      });
+    } else if (Object.getOwnPropertyDescriptors) {
+      Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+    } else {
+      ownKeys(Object(source)).forEach(function (key) {
+        Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+      });
+    }
+  }
+
+  return target;
+}
+
+function _defineProperty(obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+}
 
 /**
  * Some “list” response that can be paginated have a different response structure
@@ -2091,6 +2145,13 @@ const VERSION = "2.13.3";
  * otherwise match: https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
  */
 function normalizePaginatedListResponse(response) {
+  // endpoints can respond with 204 if repository is empty
+  if (!response.data) {
+    return _objectSpread2(_objectSpread2({}, response), {}, {
+      data: []
+    });
+  }
+
   const responseNeedsNormalization = "total_count" in response.data && !("url" in response.data);
   if (!responseNeedsNormalization) return response; // keep the additional properties intact as there is currently no other way
   // to retrieve the same information.
@@ -2129,19 +2190,32 @@ function iterator(octokit, route, parameters) {
         if (!url) return {
           done: true
         };
-        const response = await requestMethod({
-          method,
-          url,
-          headers
-        });
-        const normalizedResponse = normalizePaginatedListResponse(response); // `response.headers.link` format:
-        // '<https://api.github.com/users/aseemk/followers?page=2>; rel="next", <https://api.github.com/users/aseemk/followers?page=2>; rel="last"'
-        // sets `url` to undefined if "next" URL is not present or `link` header is not set
 
-        url = ((normalizedResponse.headers.link || "").match(/<([^>]+)>;\s*rel="next"/) || [])[1];
-        return {
-          value: normalizedResponse
-        };
+        try {
+          const response = await requestMethod({
+            method,
+            url,
+            headers
+          });
+          const normalizedResponse = normalizePaginatedListResponse(response); // `response.headers.link` format:
+          // '<https://api.github.com/users/aseemk/followers?page=2>; rel="next", <https://api.github.com/users/aseemk/followers?page=2>; rel="last"'
+          // sets `url` to undefined if "next" URL is not present or `link` header is not set
+
+          url = ((normalizedResponse.headers.link || "").match(/<([^>]+)>;\s*rel="next"/) || [])[1];
+          return {
+            value: normalizedResponse
+          };
+        } catch (error) {
+          if (error.status !== 409) throw error;
+          url = "";
+          return {
+            value: {
+              status: 200,
+              headers: {},
+              data: []
+            }
+          };
+        }
       }
 
     })
@@ -3494,7 +3568,8 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 var deprecation = __nccwpck_require__(5800);
 var once = _interopDefault(__nccwpck_require__(8666));
 
-const logOnce = once(deprecation => console.warn(deprecation));
+const logOnceCode = once(deprecation => console.warn(deprecation));
+const logOnceHeaders = once(deprecation => console.warn(deprecation));
 /**
  * Error with extra properties to help with debugging
  */
@@ -3511,14 +3586,17 @@ class RequestError extends Error {
 
     this.name = "HttpError";
     this.status = statusCode;
-    Object.defineProperty(this, "code", {
-      get() {
-        logOnce(new deprecation.Deprecation("[@octokit/request-error] `error.code` is deprecated, use `error.status`."));
-        return statusCode;
-      }
+    let headers;
 
-    });
-    this.headers = options.headers || {}; // redact request credentials without mutating original request options
+    if ("headers" in options && typeof options.headers !== "undefined") {
+      headers = options.headers;
+    }
+
+    if ("response" in options) {
+      this.response = options.response;
+      headers = options.response.headers;
+    } // redact request credentials without mutating original request options
+
 
     const requestCopy = Object.assign({}, options.request);
 
@@ -3533,7 +3611,22 @@ class RequestError extends Error {
     .replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]") // OAuth tokens can be passed as URL query parameters, although it is not recommended
     // see https://developer.github.com/v3/#oauth2-token-sent-in-a-header
     .replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
-    this.request = requestCopy;
+    this.request = requestCopy; // deprecations
+
+    Object.defineProperty(this, "code", {
+      get() {
+        logOnceCode(new deprecation.Deprecation("[@octokit/request-error] `error.code` is deprecated, use `error.status`."));
+        return statusCode;
+      }
+
+    });
+    Object.defineProperty(this, "headers", {
+      get() {
+        logOnceHeaders(new deprecation.Deprecation("[@octokit/request-error] `error.headers` is deprecated, use `error.response.headers`."));
+        return headers || {};
+      }
+
+    });
   }
 
 }
@@ -3560,7 +3653,7 @@ var isPlainObject = __nccwpck_require__(3032);
 var nodeFetch = _interopDefault(__nccwpck_require__(8534));
 var requestError = __nccwpck_require__(3190);
 
-const VERSION = "5.5.0";
+const VERSION = "5.6.0";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
@@ -3584,7 +3677,7 @@ function fetchWrapper(requestOptions) {
     redirect: requestOptions.redirect
   }, // `requestOptions.request.agent` type is incompatible
   // see https://github.com/octokit/types.ts/pull/264
-  requestOptions.request)).then(response => {
+  requestOptions.request)).then(async response => {
     url = response.url;
     status = response.status;
 
@@ -3609,49 +3702,43 @@ function fetchWrapper(requestOptions) {
       }
 
       throw new requestError.RequestError(response.statusText, status, {
-        headers,
+        response: {
+          url,
+          status,
+          headers,
+          data: undefined
+        },
         request: requestOptions
       });
     }
 
     if (status === 304) {
       throw new requestError.RequestError("Not modified", status, {
-        headers,
+        response: {
+          url,
+          status,
+          headers,
+          data: await getResponseData(response)
+        },
         request: requestOptions
       });
     }
 
     if (status >= 400) {
-      return response.text().then(message => {
-        const error = new requestError.RequestError(message, status, {
+      const data = await getResponseData(response);
+      const error = new requestError.RequestError(toErrorMessage(data), status, {
+        response: {
+          url,
+          status,
           headers,
-          request: requestOptions
-        });
-
-        try {
-          let responseBody = JSON.parse(error.message);
-          Object.assign(error, responseBody);
-          let errors = responseBody.errors; // Assumption `errors` would always be in Array format
-
-          error.message = error.message + ": " + errors.map(JSON.stringify).join(", ");
-        } catch (e) {// ignore, see octokit/rest.js#684
-        }
-
-        throw error;
+          data
+        },
+        request: requestOptions
       });
+      throw error;
     }
 
-    const contentType = response.headers.get("content-type");
-
-    if (/application\/json/.test(contentType)) {
-      return response.json();
-    }
-
-    if (!contentType || /^text\/|charset=utf-8$/.test(contentType)) {
-      return response.text();
-    }
-
-    return getBufferResponse(response);
+    return getResponseData(response);
   }).then(data => {
     return {
       status,
@@ -3660,15 +3747,40 @@ function fetchWrapper(requestOptions) {
       data
     };
   }).catch(error => {
-    if (error instanceof requestError.RequestError) {
-      throw error;
-    }
-
+    if (error instanceof requestError.RequestError) throw error;
     throw new requestError.RequestError(error.message, 500, {
-      headers,
       request: requestOptions
     });
   });
+}
+
+async function getResponseData(response) {
+  const contentType = response.headers.get("content-type");
+
+  if (/application\/json/.test(contentType)) {
+    return response.json();
+  }
+
+  if (!contentType || /^text\/|charset=utf-8$/.test(contentType)) {
+    return response.text();
+  }
+
+  return getBufferResponse(response);
+}
+
+function toErrorMessage(data) {
+  if (typeof data === "string") return data; // istanbul ignore else - just in case
+
+  if ("message" in data) {
+    if (Array.isArray(data.errors)) {
+      return `${data.message}: ${data.errors.map(JSON.stringify).join(", ")}`;
+    }
+
+    return data.message;
+  } // istanbul ignore next - just in case
+
+
+  return `Unknown error: ${JSON.stringify(data)}`;
 }
 
 function withDefaults(oldEndpoint, newDefaults) {
@@ -15108,23 +15220,29 @@ async function* getFiles(dir, blacklist = ['.git', 'node_modules', '__pycache__'
 
 async function main() {
     try {
-        const username = core.getInput('username')
+        const name = core.getInput('name')
         const repo = core.getInput('repo')
         const email = core.getInput('email')
         const pat = core.getInput('pat')
+        const isOrg = core.getInput('org') == true
         const octokit = github.getOctokit(pat);
-        await octokit.request('POST /user/repos', {
+        const payload = {
             name: `${repo}.py`,
             auto_init: true, // needed if uploading via API rather than git push
             has_issues: false,
             has_projects: false,
             has_wiki: false
-        });
+        };
+        if (isOrg) {
+            await octokit.request('POST /orgs/{org}/repos', { ...payload, ...{ org: name } })
+        } else {
+            await octokit.request('POST /user/repos', payload)
+        }
         fs.mkdtemp(path.join(os.tmpdir(), 'r2py-'), (err, folder) => {
             if (err) throw err;
             process.chdir(folder);
             execSync(`git config --global user.email ${email}`)
-            execSync(`git config --global user.name ${username}`)
+            execSync(`git config --global user.name ${name}`)
             execSync('git config --global init.defaultBranch main')
             execSync('git init')
             fs.copySync(`${__dirname}/../boilerplate/`, '.')
@@ -15138,14 +15256,14 @@ async function main() {
             fs.writeFileSync(`${repo}/__init__.py`, convert(repo, fs.readdirSync(man_files).map(x => `${man_files}/` + x)));
             // execSync('git add .')
             // execSync('git commit -m "first commit"')
-            // execSync(`git remote add origin https://${username}:${password}@github.com/${username}/${repo}.py.git`)
+            // execSync(`git remote add origin https://${name}:${password}@github.com/${name}/${repo}.py.git`)
             // execSync('git branch -M main')
-            // execSync(`git push https://${username}:${password}@github.com/${username}/${repo}.py.git`)
+            // execSync(`git push https://${name}:${password}@github.com/${name}/${repo}.py.git`)
             // instead of `git push` (which req's a password), upload each file individually via API
             (async () => {
                 for await (const f of getFiles(folder)) {
                     await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
-                        owner: username,
+                        owner: name,
                         repo: `${repo}.py`,
                         path: path.relative(folder, f),
                         message: 'BOT: PennSIVE/r2py run',

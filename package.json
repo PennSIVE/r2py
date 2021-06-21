@@ -1,6 +1,6 @@
 {
   "name": "r2py",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Wraps R code in python using rpy2.",
   "main": "main.js",
   "directories": {

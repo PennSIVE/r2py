@@ -24,23 +24,29 @@ async function* getFiles(dir, blacklist = ['.git', 'node_modules', '__pycache__'
 
 async function main() {
     try {
-        const username = core.getInput('username')
+        const name = core.getInput('name')
         const repo = core.getInput('repo')
         const email = core.getInput('email')
         const pat = core.getInput('pat')
+        const isOrg = core.getInput('org') == true
         const octokit = github.getOctokit(pat);
-        await octokit.request('POST /user/repos', {
+        const payload = {
             name: `${repo}.py`,
             auto_init: true, // needed if uploading via API rather than git push
             has_issues: false,
             has_projects: false,
             has_wiki: false
-        });
+        };
+        if (isOrg) {
+            await octokit.request('POST /orgs/{org}/repos', { ...payload, ...{ org: name } })
+        } else {
+            await octokit.request('POST /user/repos', payload)
+        }
         fs.mkdtemp(path.join(os.tmpdir(), 'r2py-'), (err, folder) => {
             if (err) throw err;
             process.chdir(folder);
             execSync(`git config --global user.email ${email}`)
-            execSync(`git config --global user.name ${username}`)
+            execSync(`git config --global user.name ${name}`)
             execSync('git config --global init.defaultBranch main')
             execSync('git init')
             fs.copySync(`${__dirname}/../boilerplate/`, '.')
@@ -54,14 +60,14 @@ async function main() {
             fs.writeFileSync(`${repo}/__init__.py`, convert(repo, fs.readdirSync(man_files).map(x => `${man_files}/` + x)));
             // execSync('git add .')
             // execSync('git commit -m "first commit"')
-            // execSync(`git remote add origin https://${username}:${password}@github.com/${username}/${repo}.py.git`)
+            // execSync(`git remote add origin https://${name}:${password}@github.com/${name}/${repo}.py.git`)
             // execSync('git branch -M main')
-            // execSync(`git push https://${username}:${password}@github.com/${username}/${repo}.py.git`)
+            // execSync(`git push https://${name}:${password}@github.com/${name}/${repo}.py.git`)
             // instead of `git push` (which req's a password), upload each file individually via API
             (async () => {
                 for await (const f of getFiles(folder)) {
                     await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
-                        owner: username,
+                        owner: name,
                         repo: `${repo}.py`,
                         path: path.relative(folder, f),
                         message: 'BOT: PennSIVE/r2py run',
