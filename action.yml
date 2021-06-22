@@ -17,6 +17,10 @@ inputs:
     description: 'Provide a truthy value indicate organization, falsy value to indicate personal account'
     required: false
     default: '1'
+  py_repo:
+    description: 'Name of repo to push python package to'
+    required: false
+    default: '?'
 runs:
   using: 'node12'
   main: 'dist/index.js'

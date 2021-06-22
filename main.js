@@ -29,18 +29,27 @@ async function main() {
         const email = core.getInput('email')
         const pat = core.getInput('pat')
         const isOrg = core.getInput('org') == true
+        let py_repo = core.getInput('py_repo')
+        if (py_repo === '?') {
+            py_repo = `${repo}.py`
+        }
+        
         const octokit = github.getOctokit(pat);
         const payload = {
-            name: `${repo}.py`,
+            name: py_repo,
             auto_init: true, // needed if uploading via API rather than git push
             has_issues: false,
             has_projects: false,
             has_wiki: false
         };
-        if (isOrg) {
-            await octokit.request('POST /orgs/{org}/repos', { ...payload, ...{ org: name } })
-        } else {
-            await octokit.request('POST /user/repos', payload)
+        try {
+            if (isOrg) {
+                await octokit.request('POST /orgs/{org}/repos', { ...payload, ...{ org: name } })
+            } else {
+                await octokit.request('POST /user/repos', payload)
+            }
+        } catch (error) { // probably because repo already exists
+            console.error(error)
         }
         fs.mkdtemp(path.join(os.tmpdir(), 'r2py-'), (err, folder) => {
             if (err) throw err;
@@ -68,7 +77,7 @@ async function main() {
                 for await (const f of getFiles(folder)) {
                     await octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
                         owner: name,
-                        repo: `${repo}.py`,
+                        repo: py_repo,
                         path: path.relative(folder, f),
                         message: 'BOT: PennSIVE/r2py run',
                         content: fs.readFileSync(f, { encoding: 'base64' })
